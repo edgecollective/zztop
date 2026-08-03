@@ -4,11 +4,36 @@ Numbered in the order they were developed. Each one is standalone: it carries it
 `prj.conf`, and its own `Kconfig` where a promptless symbol needs selecting. Nothing
 here depends on configuration passed at build time.
 
-    01-coherent-dma     non-cacheable memory for coherent buffers with the cache on
-    02-dac-dma-tone     timer-triggered DMA to the DAC: the first generated waveform
+    01-coherent-dma        non-cacheable memory for coherent buffers with the cache on
+    02-dac-dma-tone        timer-triggered DMA to the DAC: the first generated waveform
+    03-adc-bringup         acquisition path, proven in two stages
+    04-lockin-iq           in-phase and quadrature detection: the lock-in core
+    05-lockin-phase-ref    pinning the start phase so absolute phase means something
+    06-lockin-two-point    a second frequency, and the first spectroscopy
 
-They build in sequence in the sense that each relies on what the previous one
-established, but any of them can be built and flashed on its own. The header comment in
-each `src/main.c` explains what that application demonstrates and why it exists.
+Any of them can be built and flashed on its own, but they are written to be read in
+order: each header comment explains what that application adds to the one before it.
 
-See [../BUILDING.md](../BUILDING.md) for the toolchain and the build invocation.
+## The shared arrangement
+
+From `03-adc-bringup` onward the applications share one hardware arrangement, described
+here rather than repeated in each file.
+
+TIM6 raises an update event at the sample rate. That event does two things at once: it
+triggers a DAC conversion, and it triggers an ADC conversion. Excitation and acquisition
+therefore advance on the same clock edge, so acquisition sample k corresponds to
+excitation update k, and there are exactly as many samples per output period as there
+are points in the lookup table.
+
+This is the reason the instrument can measure phase at all. Coherence between output and
+input is structural, a consequence of sharing one timer, rather than something calibrated
+away afterwards. There is only one clock in the story, so there is nothing to drift.
+
+Both DMA streams, and the debug transport, place their buffers in the board's
+non-cacheable region. See [../BUILDING.md](../BUILDING.md) for why that region exists.
+
+## Wiring
+
+The DAC output PA4, exposed as pin 30, is jumpered to PC0, which is ADC1_INP10, exposed
+as A0 on pin 22. For the loopback applications that jumper is a direct wire. For the
+spectroscopy applications it is the network under test.
