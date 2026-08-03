@@ -67,6 +67,24 @@ The jumpers and the resistor and capacitor to the right of the board are the div
 wired between the DAC pin and the ADC pin. The two probes are the oscilloscope, watching
 the generated waveform directly.
 
+### What two points buy you
+
+![two-point measurement against two candidate models](../../docs/images/two-point-models.png)
+
+The two lock-in measurements, at 999.5 Hz and 100 Hz, plotted against two candidate
+models of the shunt device. The dashed curve is an ideal 470 nF capacitor, the nominal
+part value. The solid curve is a dispersive model, in which the effective capacitance
+falls slowly with frequency and the loss is set by a constant loss tangent.
+
+Both measured points land on the dispersive curve rather than the ideal one. Two
+frequencies are enough to see that, which is the entire argument for the second
+excitation frequency: a single point could be fitted by either model, and only the
+second one separates them.
+
+This figure is produced by the analysis tooling that arrives with the sweep engine
+rather than by the firmware itself; the two points on it are the measurements these
+applications make.
+
 Everything else on the bench is support: a debug probe on the SWD header for flashing and
 trace output, and an oscilloscope probe where the generated waveform needs independent
 confirmation.
