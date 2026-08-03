@@ -1,0 +1,19 @@
+# The USE_STM32_HAL_* symbols are promptless: they carry no menu entry and can
+# only be enabled by another symbol selecting them, which means prj.conf cannot
+# set them directly. This application-level helper exists purely to do that
+# selecting, pulling in the HAL modules the application drives by hand.
+
+mainmenu "dac_dma_tone"
+
+config APP_STM32_HAL_DAC_DMA
+	bool
+	default y
+	select USE_STM32_HAL_GPIO
+	select USE_STM32_HAL_DAC
+	select USE_STM32_HAL_DAC_EX
+	select USE_STM32_HAL_DMA
+	select USE_STM32_HAL_DMA_EX
+	select USE_STM32_HAL_TIM
+	select USE_STM32_HAL_TIM_EX
+
+source "Kconfig.zephyr"
