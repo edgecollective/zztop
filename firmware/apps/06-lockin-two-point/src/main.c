@@ -6,6 +6,26 @@
  * an output of exactly 100.00 Hz. Bursts last around 100 ms at this rate, so the
  * capture timeout is raised accordingly.
  *
+ * The network under test is a voltage divider with the device of interest in its
+ * lower leg:
+ *
+ *     PA4 (pin 30) --- R_series 4k7 --- node (pin 22, A0) --- R_shunt 4k7 --- AGND
+ *                                          |                      |
+ *                                          +------ C_dut ---------+
+ *
+ * The ADC measures the node, so what comes back is the divider ratio
+ * H = V_node / V_drive rather than an impedance directly. Two equal resistors give a
+ * useful built-in check: at DC the capacitor is an open circuit, so H should be 0.5.
+ * If it is not, something is wrong before any interesting measurement is attempted.
+ *
+ * Recovering the capacitor from H is two steps. Invert the divider to get the total
+ * shunt-leg impedance, then peel off the resistor that is known by admittance
+ * subtraction, since parallel elements add in admittance:
+ *
+ *     Y_dut = 1/Z_shunt - 1/R_shunt
+ *
+ * What is left is the device alone.
+ *
  * One frequency tells you an impedance. Two frequencies start to tell you what the
  * thing under test actually is.
  *

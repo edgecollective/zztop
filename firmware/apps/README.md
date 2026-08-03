@@ -47,9 +47,25 @@ together the answer is known in advance, so any magnitude error or phase offset 
 instrument reports is the instrument's own. It is how the residual pipeline delay gets
 characterised before anything unknown is put in the path.
 
-For the spectroscopy applications the jumper is replaced by the network under test, a
-resistor in parallel with a capacitor, and the instrument is asked a question it does not
-already know the answer to.
+For the spectroscopy application the jumper is replaced by the network under test: a
+voltage divider with the device of interest in its lower leg.
+
+    PA4 (pin 30) --- R_series 4k7 --- node (pin 22, A0) --- R_shunt 4k7 --- AGND
+                                         |                      |
+                                         +------ C_dut ---------+
+
+Because the ADC reads the divider node, the raw measurement is a ratio rather than an
+impedance. Two equal resistors give a free sanity check: at DC the capacitor is an open
+circuit, so the ratio should be exactly 0.5. Recovering the capacitor alone means
+inverting the divider for the shunt-leg impedance and then subtracting the known
+resistor in admittance, since parallel elements add that way.
+
+![the divider on the bench](../../docs/images/divider-bench.jpg)
+
+The board on its breadboard, debug probe ribbon on the SWD header and USB for power.
+The jumpers and the resistor and capacitor to the right of the board are the divider,
+wired between the DAC pin and the ADC pin. The two probes are the oscilloscope, watching
+the generated waveform directly.
 
 Everything else on the bench is support: a debug probe on the SWD header for flashing and
 trace output, and an oscilloscope probe where the generated waveform needs independent

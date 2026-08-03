@@ -6,9 +6,38 @@
  * multiplied against in-phase and quadrature references at the excitation frequency
  * and averaged, yielding a magnitude and a phase.
  *
- * That is the whole idea behind a lock-in: correlating against a reference at a known
- * frequency rejects everything that is not at that frequency, which is why this
- * technique can pull a small signal out of a noisy background.
+ * I and Q stand for in-phase and quadrature: the two components a sinusoid at a
+ * known frequency can be decomposed into, ninety degrees apart. Together they carry
+ * everything there is to know about the signal at that frequency, amplitude and
+ * timing both, which is why one real number would not have been enough.
+ *
+ * Extracting them is a correlation. Multiply the captured samples by a reference and
+ * average. With theta_k = 2*pi*k/LUT_LEN, this code computes
+ *
+ *     I = (2/N) * sum_k  s_k * cos(theta_k)
+ *     Q = (2/N) * sum_k  s_k * sin(theta_k)
+ *
+ * and for a captured signal s_k = A*sin(theta_k + phi) those evaluate to
+ *
+ *     I = A*sin(phi)
+ *     Q = A*cos(phi)
+ *
+ * so the amplitude and phase come back as
+ *
+ *     A   = sqrt(I^2 + Q^2)
+ *     phi = 90deg - atan2(Q, I)
+ *
+ * The factor of 2/N is there because averaging cos^2 over whole periods gives 1/2,
+ * so the raw projection is half the amplitude. The 90 degrees in the phase line is
+ * just this code's reference convention: I is correlated against a cosine while the
+ * signal is written as a sine.
+ *
+ * The reason any of this rejects noise: a component at some other frequency,
+ * multiplied by the reference and averaged over an integer number of periods, sums
+ * toward zero. Only what is coherent with the reference survives the average. That is
+ * how a lock-in pulls a small signal out of a noisy background, and it is why the
+ * coherent sampling arrangement matters so much here. Whole periods are exact, so the
+ * cancellation is exact.
  *
  * Expected behaviour here, and worth predicting before running it: the magnitude
  * should be stable burst to burst and should agree with the amplitude estimate the
