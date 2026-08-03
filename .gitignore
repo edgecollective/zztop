@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 build/
+twister-out*/
 
 # Environment variables
 .env
@@ -31,3 +32,15 @@ yarn-error.log*
 # tscircuit-generated agent skill scaffold (regenerable via tsci)
 .agents/
 .claude/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ngspice output. The .cir netlists are the source; everything the simulator
+# emits from them is regenerable and stays out of the history.
+*.raw
+*.log
