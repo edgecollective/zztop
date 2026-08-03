@@ -13,7 +13,8 @@ built without reference to anything outside its own directory. See
 [BUILDING.md](BUILDING.md) for the toolchain and the build invocation.
 
 The board definition carries one thing worth knowing before you use it: a non-cacheable
-SRAM region. This part has a data cache, and both DMA buffers and debug output need
-memory that the cache is not holding stale copies of. Rather than disabling the cache
-and paying for it everywhere, the board marks `sram1` non-cacheable and the buffers live
-there.
+SRAM region. This part has a data cache, and both DMA (Direct Memory Access) buffers and
+debug output need memory that the cache is not holding stale copies of. Rather than
+disabling the cache and paying for it everywhere, the board marks `sram1` non-cacheable
+and the buffers live there. BUILDING.md explains the mechanism and the devicetree alias
+that connects it to the debug transport.
