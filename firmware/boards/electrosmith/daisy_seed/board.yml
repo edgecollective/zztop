@@ -1,0 +1,6 @@
+board:
+  name: daisy_seed
+  full_name: Daisy Seed Rev7
+  vendor: electrosmith
+  socs:
+    - name: stm32h750xx

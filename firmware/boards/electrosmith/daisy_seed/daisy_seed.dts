@@ -1,0 +1,160 @@
+/*
+ * Copyright (c) 2026 Craig Versek
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Electrosmith Daisy Seed Rev7 -- STM32H750IBK6 (Cortex-M7, IBK / UFBGA176).
+ * Out-of-tree board, internal-flash-resident (128 KB @ 0x08000000).
+ * Cribbed from boards/fanke/fk750m1_vbt6 (bare H750 module); clock + power
+ * values sourced from libDaisy System::ConfigureClocks, not guessed.
+ */
+
+/dts-v1/;
+#include <st/h7/stm32h750Xb.dtsi>
+#include <st/h7/stm32h750ibkx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/memory-attr/memory-attr-arm.h>
+
+/ {
+	model = "Electrosmith Daisy Seed Rev7";
+	compatible = "electrosmith,daisy-seed";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+
+	/* (Cycle-13 Learn-by-Doing, completed below.) Define the Daisy's onboard user LED.
+	 *
+	 * Add a `leds` node (compatible = "gpio-leds") with one child
+	 * `user_led: led_0` whose `gpios` property names the correct GPIO
+	 * controller, pin, and active level for the Daisy Seed's onboard LED.
+	 * Then add an `aliases` node with `led0 = &user_led;` so the upstream
+	 * samples/basic/blinky finds it (it looks for the `led0` alias).
+	 *
+	 * Source the pin + active level from the authoritative reference --
+	 * libDaisy's daisy_seed pin map / the Daisy Seed pinout -- do NOT guess.
+	 * (Believe the probe closest to the mechanism: the LED is wired in
+	 * hardware; the schematic/libDaisy owns that fact, not our intuition.)
+	 *
+	 * Devicetree GPIO syntax:  gpios = <&gpioX <pin> <flags>>;
+	 *   - &gpioX is a controller phandle (e.g. &gpioa ... &gpiog), all
+	 *     defined by the SoC dtsi already included above.
+	 *   - <flags> is GPIO_ACTIVE_HIGH or GPIO_ACTIVE_LOW
+	 *     (from <zephyr/dt-bindings/gpio/gpio.h>, transitively included).
+	 *
+	 * Shape (fill the gpios line + confirm/adjust the alias):
+	 *
+	 *   leds {
+	 *       compatible = "gpio-leds";
+	 *       user_led: led_0 {
+	 *           gpios = <&gpio?  ??  GPIO_ACTIVE_????>;
+	 *           label = "User LED";
+	 *       };
+	 *   };
+	 *
+	 *   aliases {
+	 *       led0 = &user_led;
+	 *   };
+	 */
+	leds {
+	    compatible = "gpio-leds";
+		user_led: led_0 {
+			gpios = <&gpioc  7  GPIO_ACTIVE_HIGH>;
+			label = "User LED";
+		};
+	};
+	aliases {
+        led0 = &user_led;
+    };
+};
+
+/*
+ * Clock tree -- Daisy Seed: 16 MHz HSE crystal -> PLL1 -> 480 MHz SYSCLK.
+ * Sourced from libDaisy ConfigureClocks (480 MHz / VOS0 mode):
+ *   PLLM=4, PLLN=240, PLLP=2, PLLQ=5, PLLR=2; HCLK=/2; APB1..4=/2.
+ * Check: 16 / 4 * 240 / 2 = 480 MHz.
+ */
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(16)>;
+	status = "okay";
+};
+
+&pll {
+	div-m = <4>;
+	mul-n = <240>;
+	div-p = <2>;
+	div-q = <5>;
+	div-r = <2>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(480)>;
+	d1cpre = <1>;
+	hpre = <2>;
+	d1ppre = <2>;
+	d2ppre1 = <2>;
+	d2ppre2 = <2>;
+	d3ppre = <2>;
+};
+
+/* Daisy Seed uses the internal LDO regulator (libDaisy: PWR_LDO_SUPPLY). */
+&pwr {
+	power-supply = "ldo";
+};
+
+/*
+ * USB OTG FS on PA11 (D-) / PA12 (D+) -- the same FS peripheral the H750 ROM
+ * bootloader uses for DFU, so it's the connector we've been flashing over.
+ * Labeled `zephyr_udc0` so the cdc-acm-console snippet can hang a CDC ACM
+ * (virtual serial) device on it for the console.
+ *
+ * USB FS needs a 48 MHz clock. Enable HSI48 -- the on-chip 48 MHz RC oscillator
+ * whose Clock Recovery System auto-trims it against the USB host's start-of-frame
+ * packets, accurate enough for full-speed USB without an external crystal path.
+ */
+&clk_hsi48 {
+	status = "okay";
+};
+
+zephyr_udc0: &usbotg_fs {
+	pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/*
+ * A NON-CACHEABLE SRAM region, used for debug output and later for DAC/ADC DMA
+ * buffers, on this cached Cortex-M7. A buffer in an MPU-marked non-cacheable
+ * region is written straight through to physical SRAM, so an external debugger
+ * and the DMA engine both read fresh data with the data cache left enabled.
+ *
+ * This is the production fix for a coherency problem that first showed up as
+ * silent debug output: disabling the data cache proved the cause, but paying for
+ * it everywhere is the wrong trade. Isolating the buffers keeps the cache.
+ *
+ * sram1 (0x30000000, 128K, D2 domain) is the deliberate choice:
+ *   - DMA-reachable, so the same region serves DAC and ADC DMA buffers.
+ *   - Not the cached system RAM (sram0, AXI at 0x24000000, stays zephyr,sram).
+ *   - Not DTCM (0x20000000). DTCM is CPU-only and DMA cannot reach it, which is
+ *     why an earlier attempt to place debug buffers there faulted: the symbol
+ *     landed in read-only flash and the first write took down the CPU.
+ *
+ * The alias below is the contract the RTT custom-section Kconfig reads to place
+ * its buffers into this region.
+ */
+
+&sram1 {
+	compatible = "zephyr,memory-region", "mmio-sram";
+	zephyr,memory-region = "RTT_NOCACHE";
+	zephyr,memory-attr = <DT_MEM_ARM(ATTR_MPU_RAM_NOCACHE)>;
+};
+/ {
+	aliases {
+		/* DTS alias names use hyphens ([0-9a-z-]); Zephyr normalizes to
+		 * rtt_custom_section for DT_ALIAS() -- what the RTT Kconfig means. */
+		rtt-custom-section = &sram1;
+	};
+};
