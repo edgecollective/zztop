@@ -1,0 +1,20 @@
+# The USE_STM32_HAL_* symbols are promptless: they carry no menu entry and can only
+# be enabled by another symbol selecting them, so prj.conf cannot set them directly.
+# This application-level helper exists to do that selecting.
+# This set adds the ADC modules, for channel configuration and calibration.
+mainmenu "lockin_two_point"
+
+config APP_STM32_HAL_LOCKIN
+	bool
+	default y
+	select USE_STM32_HAL_GPIO
+	select USE_STM32_HAL_DAC
+	select USE_STM32_HAL_DAC_EX
+	select USE_STM32_HAL_ADC
+	select USE_STM32_HAL_ADC_EX
+	select USE_STM32_HAL_DMA
+	select USE_STM32_HAL_DMA_EX
+	select USE_STM32_HAL_TIM
+	select USE_STM32_HAL_TIM_EX
+
+source "Kconfig.zephyr"
