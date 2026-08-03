@@ -34,6 +34,23 @@ non-cacheable region. See [../BUILDING.md](../BUILDING.md) for why that region e
 
 ## Wiring
 
-The DAC output PA4, exposed as pin 30, is jumpered to PC0, which is ADC1_INP10, exposed
-as A0 on pin 22. For the loopback applications that jumper is a direct wire. For the
-spectroscopy applications it is the network under test.
+The measurement is a loop. The board drives a signal out of its DAC, that signal passes
+through whatever is being measured, and the board reads the result back on its ADC. So
+two pins have to be connected by something:
+
+    PA4  (pin 30)  DAC1_OUT1   ---- device under test ---->  PC0 (pin 22)  ADC1_INP10
+                                                             also labelled A0
+
+For the loopback applications that "device under test" is a plain jumper wire, a direct
+short from output to input. That sounds pointless and is not: with the two pins tied
+together the answer is known in advance, so any magnitude error or phase offset the
+instrument reports is the instrument's own. It is how the residual pipeline delay gets
+characterised before anything unknown is put in the path.
+
+For the spectroscopy applications the jumper is replaced by the network under test, a
+resistor in parallel with a capacitor, and the instrument is asked a question it does not
+already know the answer to.
+
+Everything else on the bench is support: a debug probe on the SWD header for flashing and
+trace output, and an oscilloscope probe where the generated waveform needs independent
+confirmation.
